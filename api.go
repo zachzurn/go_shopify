@@ -8,10 +8,11 @@ import (
 )
 
 type API struct {
-	URI    string
-	Token  string
-	Secret string
-	client *http.Client
+	Shop        string // for e.g. demo-3.myshopify.com
+	AccessToken string // permanent store access token
+	Token       string // API client token
+	Secret      string // API client secret for this shop
+	client      *http.Client
 }
 
 type errorResponse struct {
@@ -23,17 +24,20 @@ func (api *API) request(endpoint string, method string, params map[string]interf
 		api.client = &http.Client{}
 	}
 
-	uri := fmt.Sprintf("%s/%s", api.URI, endpoint)
+	uri := fmt.Sprintf("https://%s%s", api.Shop, endpoint)
 	req, err := http.NewRequest(method, uri, body)
 	if err != nil {
 		return
 	}
 
-	req.SetBasicAuth(api.Token, api.Secret)
+	if api.AccessToken != "" {
+		req.Header.Set("X-Shopify-Access-Token", api.AccessToken)
+	} else {
+		req.SetBasicAuth(api.Token, api.Secret)
+	}
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := api.client.Do(req)
-	fmt.Printf("resp %v err %v", resp, err)
 	if err != nil {
 		return
 	}

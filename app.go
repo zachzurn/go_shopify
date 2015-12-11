@@ -3,7 +3,6 @@ package shopify
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/md5"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
@@ -40,9 +39,9 @@ func verifyHMAC(expectedHMAC, message, sharedSecret string) bool {
 	h := hmac.New(sha256.New, []byte(sharedSecret))
 	h.Write([]byte(message))
 
-	return hmac.Equal([]byte(expectedHMAC), []byte(hex.EncodeToString(h.Sum(nil))))
+	value := hex.EncodeToString(h.Sum(nil))
+	return hmac.Equal([]byte(expectedHMAC), []byte(value))
 }
-
 
 func (s *App) VerifyHMACSignature(u *url.URL) bool {
 	if s.IgnoreSignature {
@@ -50,31 +49,32 @@ func (s *App) VerifyHMACSignature(u *url.URL) bool {
 	}
 	params := u.Query()
 	hmac := params.Get("hmac")
-	if hmac == "" {
-		return false
-	}
+	//	if hmac == "" {
+	//		return false
+	//	}
 	params.Del("hmac")
 	params.Del("signature")
 	message := s.signatureString(u, false)
 	return verifyHMAC(hmac, message, s.APISecret)
 }
 
-func (s *App) AdminSignatureOk(u *url.URL) bool {
-	if s.IgnoreSignature {
-		return true
-	}
-
-	params := u.Query()
-	signature := params.Get("signature")
-	if signature == "" {
-		return false
-	}
-
-	raw := md5.Sum([]byte(s.signatureString(u, true)))
-	encrypted := hex.EncodeToString(raw[:])
-
-	return 1 == subtle.ConstantTimeCompare([]byte(encrypted), []byte(signature[0]))
-}
+// Deprecated and removed on 1st Jun 2015
+//func (s *App) AdminSignatureOk(u *url.URL) bool {
+//	if s.IgnoreSignature {
+//		return true
+//	}
+//
+//	params := u.Query()
+//	signature := params.Get("signature")
+//	if signature == "" {
+//		return false
+//	}
+//
+//	raw := md5.Sum([]byte(s.signatureString(u, true)))
+//	encrypted := hex.EncodeToString(raw[:])
+//
+//	return 1 == subtle.ConstantTimeCompare([]byte(encrypted), []byte(signature))
+//}
 
 func (s *App) AppProxySignatureOk(u *url.URL) bool {
 	if s.IgnoreSignature {
@@ -91,7 +91,7 @@ func (s *App) AppProxySignatureOk(u *url.URL) bool {
 	mac.Write([]byte(s.signatureString(u, false)))
 	calculated := hex.EncodeToString(mac.Sum(nil))
 
-	return 1 == subtle.ConstantTimeCompare([]byte(signature[0]), []byte(calculated))
+	return 1 == subtle.ConstantTimeCompare([]byte(signature), []byte(calculated))
 }
 
 func (s *App) signatureString(u *url.URL, prependSig bool) string {
@@ -99,19 +99,19 @@ func (s *App) signatureString(u *url.URL, prependSig bool) string {
 
 	keys := []string{}
 	for k, _ := range params {
-		if k != "signature" && k != "hmac"{
+		if k != "signature" && k != "hmac" {
 			keys = append(keys, k)
 		}
 	}
 	sort.Strings(keys)
 
-	input := ""
-	if prependSig {
-		input = s.APISecret
-	}
 	inputs := []string{}
 	for _, k := range keys {
-		inputs = append(inputs, fmt.Sprintf("%s%s=%s", input, k, params.Get(k)))
+		inputs = append(inputs, fmt.Sprintf("%s=%s", k, params.Get(k)))
+	}
+
+	if prependSig {
+		return fmt.Sprintf("%v%v", s.APISecret, strings.Join(inputs, "&"))
 	}
 	return strings.Join(inputs, "&")
 }

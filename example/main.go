@@ -72,7 +72,7 @@ func serveInstall(w http.ResponseWriter, r *http.Request) {
 	} else if len(params["code"]) == 1 {
 
 		// auth callback from shopify
-		if app.AdminSignatureOk(r.URL) != true {
+		if app.VerifyHMACSignature(r.URL) != true {
 			http.Error(w, "Invalid signature", 401)
 			log.Printf("Invalid signature from Shopify")
 			return
@@ -112,7 +112,7 @@ func serveInstall(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveAppProxy(w http.ResponseWriter, r *http.Request) {
-	if app.AppProxySignatureOk(r.URL) {
+	if app.VerifyHMACSignature(r.URL) {
 		http.ServeFile(w, r, "static/app_proxy.html")
 	} else {
 		http.Error(w, "Unauthorized", 401)
@@ -125,7 +125,7 @@ func serveAdmin(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 
 	// signed request from Shopify?
-	if app.AdminSignatureOk(r.URL) {
+	if app.VerifyHMACSignature(r.URL) {
 		log.Printf("signed request!")
 		session.Values["current_shop"] = params["shop"][0]
 		session.Save(r, w)
