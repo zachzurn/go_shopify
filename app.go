@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 )
 
 type App struct {
@@ -35,14 +36,37 @@ func (s *App) AuthorizeURL(shop string, scopes string) string {
 	return u.String()
 }
 
+func verifyHMAC(expectedHMAC, message, sharedSecret string) bool {
+	h := hmac.New(sha256.New, []byte(sharedSecret))
+	h.Write([]byte(message))
+
+	return hmac.Equal([]byte(expectedHMAC), []byte(hex.EncodeToString(h.Sum(nil))))
+}
+
+
+func (s *App) VerifyHMACSignature(u *url.URL) bool {
+	if s.IgnoreSignature {
+		return true
+	}
+	params := u.Query()
+	hmac := params.Get("hmac")
+	if hmac == "" {
+		return false
+	}
+	params.Del("hmac")
+	params.Del("signature")
+	message := s.signatureString(u, false)
+	return verifyHMAC(hmac, message, s.APISecret)
+}
+
 func (s *App) AdminSignatureOk(u *url.URL) bool {
 	if s.IgnoreSignature {
 		return true
 	}
 
 	params := u.Query()
-	signature := params["signature"]
-	if signature == nil || len(signature) != 1 {
+	signature := params.Get("signature")
+	if signature == "" {
 		return false
 	}
 
@@ -58,8 +82,8 @@ func (s *App) AppProxySignatureOk(u *url.URL) bool {
 	}
 
 	params := u.Query()
-	signature := params["signature"]
-	if signature == nil || len(signature) != 1 {
+	signature := params.Get("signature")
+	if signature == "" {
 		return false
 	}
 
@@ -75,7 +99,7 @@ func (s *App) signatureString(u *url.URL, prependSig bool) string {
 
 	keys := []string{}
 	for k, _ := range params {
-		if k != "signature" {
+		if k != "signature" && k != "hmac"{
 			keys = append(keys, k)
 		}
 	}
@@ -85,10 +109,11 @@ func (s *App) signatureString(u *url.URL, prependSig bool) string {
 	if prependSig {
 		input = s.APISecret
 	}
+	inputs := []string{}
 	for _, k := range keys {
-		input = fmt.Sprintf("%s%s=%s", input, k, params[k][0])
+		inputs = append(inputs, fmt.Sprintf("%s%s=%s", input, k, params.Get(k)))
 	}
-	return input
+	return strings.Join(inputs, "&")
 }
 
 func (s *App) AccessToken(shop string, code string) (string, error) {
