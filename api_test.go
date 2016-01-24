@@ -48,15 +48,10 @@ func TestListCreateGetDeleteWebhook(t *testing.T) {
 	}
 
 	// List and delete all
-	webhooks, err := api.Webhooks()
+	_, err := api.Webhooks()
 
 	if err != nil {
 		fmt.Printf("Err fetching webhooks: %v", err)
-	}
-
-	for _, v := range webhooks {
-		fmt.Printf("Existing webhook: %#v", v)
-		v.Delete()
 	}
 
 	// create
@@ -65,7 +60,7 @@ func TestListCreateGetDeleteWebhook(t *testing.T) {
 	newHook.Address = "https://aaa.ngrok.com/service/hook"
 	newHook.Format = "json"
 	newHook.Topic = "orders/delete"
-	err = newHook.Save()
+	err = newHook.Save(nil)
 	if err != nil {
 		t.Fatalf("Error creating webhook: %v", err)
 	}
@@ -93,14 +88,9 @@ func TestListCreateGetDeleteProduct(t *testing.T) {
 	}
 
 	// List and delete all
-	products, err := api.Products()
+	_, err := api.Products()
 	if err != nil {
 		fmt.Printf("Err fetching products: %v", err)
-	}
-
-	for _, v := range products {
-		fmt.Printf("Existing products: %#v", v)
-		v.Delete()
 	}
 
 	// create

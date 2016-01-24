@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -35,7 +36,7 @@ func (s *App) AuthorizeURL(shop string, scopes string) string {
 	return u.String()
 }
 
-func verifyHMAC(expectedHMAC, message, sharedSecret string) bool {
+func VerifyHMAC(expectedHMAC, message, sharedSecret string) bool {
 	h := hmac.New(sha256.New, []byte(sharedSecret))
 	h.Write([]byte(message))
 
@@ -49,13 +50,26 @@ func (s *App) VerifyHMACSignature(u *url.URL) bool {
 	}
 	params := u.Query()
 	hmac := params.Get("hmac")
-	//	if hmac == "" {
-	//		return false
-	//	}
+	if params.Get("shop") == "" {
+		return false
+	}
 	params.Del("hmac")
 	params.Del("signature")
 	message := s.signatureString(u, false)
-	return verifyHMAC(hmac, message, s.APISecret)
+	return VerifyHMAC(hmac, message, s.APISecret)
+}
+
+func (s *App) VerifyHookRequest(r *http.Request, body []byte) bool {
+	if s.IgnoreSignature {
+		return true
+	}
+	expectedHMAC := r.Header.Get("X-Shopify-Hmac-SHA256")
+
+	h := hmac.New(sha256.New, []byte(s.APISecret))
+	h.Write([]byte(string(body)))
+
+	value := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return hmac.Equal([]byte(expectedHMAC), []byte(value))
 }
 
 // Deprecated and removed on 1st Jun 2015

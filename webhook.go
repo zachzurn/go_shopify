@@ -2,24 +2,20 @@ package shopify
 
 import (
 	"bytes"
-
 	"encoding/json"
-
 	"fmt"
-
-	"github.com/kr/pretty"
 	"time"
 )
 
 type Webhook struct {
-	Address             string        `json:"address"`
-	CreatedAt           time.Time     `json:"created_at"`
-	Fields              []interface{} `json:"fields"`
-	Format              string        `json:"format"`
-	Id                  int64         `json:"id"`
-	MetafieldNamespaces []interface{} `json:"metafield_namespaces"`
-	Topic               string        `json:"topic"`
-	UpdatedAt           time.Time     `json:"updated_at"`
+	Address             string        `json:"address,omitempty"`
+	CreatedAt           time.Time     `json:"created_at,omitempty"`
+	Fields              []interface{} `json:"fields,omitempty"`
+	Format              string        `json:"format,omitempty"`
+	Id                  int64         `json:"id,omitempty"`
+	MetafieldNamespaces []interface{} `json:"metafield_namespaces,omitempty"`
+	Topic               string        `json:"topic,omitempty"`
+	UpdatedAt           time.Time     `json:"updated_at,omitempty"`
 	api                 *API
 }
 
@@ -81,10 +77,10 @@ func (api *API) NewWebhook() *Webhook {
 	return &Webhook{api: api}
 }
 
-func (obj *Webhook) Save() error {
+func (obj *Webhook) Save(partial *Webhook) error {
 	endpoint := fmt.Sprintf("/admin/webhooks/%d.json", obj.Id)
 	method := "PUT"
-	expectedStatus := 201
+	expectedStatus := 200
 
 	if obj.Id == 0 {
 		endpoint = fmt.Sprintf("/admin/webhooks.json")
@@ -93,7 +89,11 @@ func (obj *Webhook) Save() error {
 	}
 
 	body := map[string]*Webhook{}
-	body["webhook"] = obj
+	if partial == nil {
+		body["webhook"] = obj
+	} else {
+		body["webhook"] = partial
+	}
 
 	buf := &bytes.Buffer{}
 	err := json.NewEncoder(buf).Encode(body)
@@ -111,7 +111,6 @@ func (obj *Webhook) Save() error {
 	if status != expectedStatus {
 		r := errorResponse{}
 		err = json.NewDecoder(res).Decode(&r)
-		pretty.Println("---res", string(res.Bytes()))
 		if err == nil {
 			return fmt.Errorf("Status %d: %v", status, r.Errors)
 		} else {
