@@ -3,15 +3,16 @@ package shopify
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/md5"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 )
 
 type App struct {
@@ -35,22 +36,59 @@ func (s *App) AuthorizeURL(shop string, scopes string) string {
 	return u.String()
 }
 
-func (s *App) AdminSignatureOk(u *url.URL) bool {
+func VerifyHMAC(expectedHMAC, message, sharedSecret string) bool {
+	h := hmac.New(sha256.New, []byte(sharedSecret))
+	h.Write([]byte(message))
+
+	value := hex.EncodeToString(h.Sum(nil))
+	return hmac.Equal([]byte(expectedHMAC), []byte(value))
+}
+
+func (s *App) VerifyHMACSignature(u *url.URL) bool {
 	if s.IgnoreSignature {
 		return true
 	}
-
 	params := u.Query()
-	signature := params["signature"]
-	if signature == nil || len(signature) != 1 {
+	hmac := params.Get("hmac")
+	if params.Get("shop") == "" {
 		return false
 	}
-
-	raw := md5.Sum([]byte(s.signatureString(u, true)))
-	encrypted := hex.EncodeToString(raw[:])
-
-	return 1 == subtle.ConstantTimeCompare([]byte(encrypted), []byte(signature[0]))
+	params.Del("hmac")
+	params.Del("signature")
+	message := s.signatureString(u, false)
+	return VerifyHMAC(hmac, message, s.APISecret)
 }
+
+func (s *App) VerifyHookRequest(r *http.Request, body []byte) bool {
+	if s.IgnoreSignature {
+		return true
+	}
+	expectedHMAC := r.Header.Get("X-Shopify-Hmac-SHA256")
+
+	h := hmac.New(sha256.New, []byte(s.APISecret))
+	h.Write([]byte(string(body)))
+
+	value := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return hmac.Equal([]byte(expectedHMAC), []byte(value))
+}
+
+// Deprecated and removed on 1st Jun 2015
+//func (s *App) AdminSignatureOk(u *url.URL) bool {
+//	if s.IgnoreSignature {
+//		return true
+//	}
+//
+//	params := u.Query()
+//	signature := params.Get("signature")
+//	if signature == "" {
+//		return false
+//	}
+//
+//	raw := md5.Sum([]byte(s.signatureString(u, true)))
+//	encrypted := hex.EncodeToString(raw[:])
+//
+//	return 1 == subtle.ConstantTimeCompare([]byte(encrypted), []byte(signature))
+//}
 
 func (s *App) AppProxySignatureOk(u *url.URL) bool {
 	if s.IgnoreSignature {
@@ -58,8 +96,8 @@ func (s *App) AppProxySignatureOk(u *url.URL) bool {
 	}
 
 	params := u.Query()
-	signature := params["signature"]
-	if signature == nil || len(signature) != 1 {
+	signature := params.Get("signature")
+	if signature == "" {
 		return false
 	}
 
@@ -67,7 +105,7 @@ func (s *App) AppProxySignatureOk(u *url.URL) bool {
 	mac.Write([]byte(s.signatureString(u, false)))
 	calculated := hex.EncodeToString(mac.Sum(nil))
 
-	return 1 == subtle.ConstantTimeCompare([]byte(signature[0]), []byte(calculated))
+	return 1 == subtle.ConstantTimeCompare([]byte(signature), []byte(calculated))
 }
 
 func (s *App) signatureString(u *url.URL, prependSig bool) string {
@@ -75,20 +113,21 @@ func (s *App) signatureString(u *url.URL, prependSig bool) string {
 
 	keys := []string{}
 	for k, _ := range params {
-		if k != "signature" {
+		if k != "signature" && k != "hmac" {
 			keys = append(keys, k)
 		}
 	}
 	sort.Strings(keys)
 
-	input := ""
-	if prependSig {
-		input = s.APISecret
-	}
+	inputs := []string{}
 	for _, k := range keys {
-		input = fmt.Sprintf("%s%s=%s", input, k, params[k][0])
+		inputs = append(inputs, fmt.Sprintf("%s=%s", k, params.Get(k)))
 	}
-	return input
+
+	if prependSig {
+		return fmt.Sprintf("%v%v", s.APISecret, strings.Join(inputs, "&"))
+	}
+	return strings.Join(inputs, "&")
 }
 
 func (s *App) AccessToken(shop string, code string) (string, error) {

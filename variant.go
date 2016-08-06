@@ -1,62 +1,29 @@
 package shopify
 
-
-import (
-  
-    "time"
-  
-)
-
-
 type Variant struct {
-  
-    Barcode string `json:"barcode"`
-  
-    CompareAtPrice string `json:"compare_at_price"`
-  
-    CreatedAt time.Time `json:"created_at"`
-  
-    FulfillmentService string `json:"fulfillment_service"`
-  
-    Grams int64 `json:"grams"`
-  
-    Id int64 `json:"id"`
-  
-    InventoryManagement string `json:"inventory_management"`
-  
-    InventoryPolicy string `json:"inventory_policy"`
-  
-    Option1 string `json:"option1"`
-  
-    Option2 string `json:"option2"`
-  
-    Option3 string `json:"option3"`
-  
-    Position int64 `json:"position"`
-  
-    Price string `json:"price"`
-  
-    ProductId int64 `json:"product_id"`
-  
-    RequiresShipping bool `json:"requires_shipping"`
-  
-    Sku string `json:"sku"`
-  
-    Taxable bool `json:"taxable"`
-  
-    Title string `json:"title"`
-  
-    UpdatedAt time.Time `json:"updated_at"`
-  
-    InventoryQuantity int64 `json:"inventory_quantity"`
-  
-    OldInventoryQuantity int64 `json:"old_inventory_quantity"`
-  
-    ImageId string `json:"image_id"`
-  
-
-  
+	Barcode              string      `json:"barcode,omitempty"`
+	CompareAtPrice       string      `json:"compare_at_price,omitempty"`
+	CreatedAt            string      `json:"created_at,omitempty"`
+	FulfillmentService   string      `json:"fulfillment_service,omitempty"`
+	Grams                float64     `json:"grams,omitempty"`
+	Weight               float64     `json:"weight,omitempty"`
+	WeightUnit           string      `json:"weight_unit,omitempty"`
+	Id                   int64       `json:"id,omitempty"`
+	InventoryManagement  string      `json:"inventory_management,omitempty"`
+	InventoryPolicy      string      `json:"inventory_policy,omitempty"`
+	InventoryQuantity    int64       `json:"inventory_quantity,omitempty"`
+	OldInventoryQuantity int64       `json:"old_inventory_quantity,omitempty"`
+	Metafield            interface{} `json:"metafield,omitempty"`
+	Option1              string      `json:"option1,omitempty"`
+	Option2              string      `json:"option2,omitempty"`
+	Option3              string      `json:"option3,omitempty"`
+	Position             int64       `json:"position,omitempty"`
+	Price                string      `json:"price,omitempty"`
+	ProductId            int64       `json:"product_id,omitempty"`
+	RequiresShipping     bool        `json:"requires_shipping,omitempty"`
+	Sku                  string      `json:"sku,omitempty"`
+	Taxable              bool        `json:"taxable,omitempty"`
+	Title                string      `json:"title,omitempty"`
+	UpdatedAt            string      `json:"updated_at,omitempty"`
+	ImageId              int64       `json:"image_id,omitempty"`
 }
-
-
-
