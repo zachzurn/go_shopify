@@ -59,8 +59,6 @@ func (api *API) Assets(themeId int64) ([]Asset, error) {
   r := &map[string][]Asset{}
   err = json.NewDecoder(res).Decode(r)
 
-  fmt.Printf("things are: %v\n\n", *r)
-
   result := (*r)["assets"]
 
 	if err != nil {
@@ -92,8 +90,6 @@ func (api *API) Asset(themeId int64, assetKey string) (*Asset, error) {
 
   r := map[string]Asset{}
   err = json.NewDecoder(res).Decode(&r)
-
-  fmt.Printf("things are: %v\n\n", r)
 
   result := r["asset"]
 
@@ -150,11 +146,7 @@ func (obj *Asset) Save() (error) {
 		return err
   }
 
-  fmt.Printf("things are: %v\n\n", r)
-
   *obj = r["asset"]
-
-  fmt.Printf("things are: %v\n\n", res)
 
   return nil
 }
